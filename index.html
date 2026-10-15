@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Fungi Tri</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        margin: 0;
+        background: #0f0f14;
+        color: #ccc;
+        font-family: ui-monospace, Menlo, monospace;
+      }
+      canvas {
+        display: block;
+        margin: 0 auto;
+        image-rendering: pixelated;
+      }
+      .gallery {
+        padding: 56px 0 40px;
+      }
+      .info {
+        position: fixed;
+        top: 8px;
+        left: 12px;
+        font-size: 12px;
+        line-height: 1.6;
+        white-space: pre;
+        pointer-events: none;
+        text-shadow: 0 0 4px #000;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap"><canvas></canvas></div>
+    <div class="info">loading…</div>
+    <script>
+      const p = new URLSearchParams(location.search);
+      if (!p.has("rule") && !p.has("index")) document.querySelector(".wrap").className = "gallery";
+    </script>
+    <script type="module" src="./web/main.ts"></script>
+  </body>
+</html>

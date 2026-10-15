@@ -1,0 +1,3 @@
+yarn.lock -diff linguist-generated
+LICENSE -diff linguist-generated
+web/rules.json -diff linguist-generated

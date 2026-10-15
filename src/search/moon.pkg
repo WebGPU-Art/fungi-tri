@@ -1,0 +1,9 @@
+import {
+  "tiye/fungi-tri/rule",
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+}
+
+options(
+  "is-main": true,
+)

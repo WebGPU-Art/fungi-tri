@@ -1,0 +1,18 @@
+{
+  "name": "fungi-tri",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build --base=./",
+    "search": "moon build --target native --release && ./_build/native/release/build/search/search.exe"
+  },
+  "devDependencies": {
+    "@webgpu/types": "^0.1.60",
+    "typescript": "^5.8.3",
+    "vite": "^7.3.0"
+  },
+  "packageManager": "yarn@4.18.0"
+}
