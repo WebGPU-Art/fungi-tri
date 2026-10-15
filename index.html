@@ -17,7 +17,41 @@
         image-rendering: pixelated;
       }
       .gallery {
-        padding: 56px 0 40px;
+        padding: 0 0 40px;
+      }
+      .intro {
+        display: none;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 56px 16px 32px;
+        font-size: 13px;
+        line-height: 1.7;
+      }
+      .gallery .intro {
+        display: block;
+      }
+      .intro h1 {
+        font-size: 28px;
+        font-weight: normal;
+        color: #eee;
+        margin: 0 0 16px;
+      }
+      .intro p {
+        margin: 0 0 10px;
+      }
+      .intro code {
+        white-space: nowrap;
+        color: #eee;
+      }
+      .intro a {
+        color: #7cc8f0;
+      }
+      .swatch {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        margin: 0 4px 0 2px;
+        vertical-align: -1px;
       }
       .info {
         position: fixed;
@@ -32,7 +66,30 @@
     </style>
   </head>
   <body>
-    <div class="wrap"><canvas></canvas></div>
+    <div class="wrap">
+      <div class="intro">
+        <h1>Fungi Tri</h1>
+        <p>
+          A 3-state take on <a href="https://repo.tiye.me/WebGPU-Art/fungi-collection/" target="_blank">Fungi</a>. Each cell is
+          empty, <span class="swatch" style="background: #fa9e38"></span>state 1 or
+          <span class="swatch" style="background: #4dc7f2"></span>state 2. The next state depends on the cell itself and on how
+          many of its orthogonal and diagonal neighbors are in each state: 3 × 15 × 15 = 675 cases, so a rule is 675 trits
+          written as 270 hex characters.
+        </p>
+        <p>
+          These rules were picked by a MoonBit search. It scored thousands of random and evolved rules for growth that keeps
+          moving, without dying out, freezing, or boiling into noise. Every tile starts from the same seed: a disk of state 1
+          around a smaller disk of state 2, on a 96 × 96 grid that wraps at the edges.
+        </p>
+        <p>
+          Hover a tile to see its scores, and click it to open it full screen. Press <code>Space</code> to pause,
+          <code>R</code> to restart, <code>N</code> to switch between the disk seed and a random seed, and <code>Esc</code> to
+          return here. Add <code>?skip=300</code> to the address to jump ahead. This page needs WebGPU, which recent Chrome has.
+        </p>
+        <p><a href="https://github.com/WebGPU-Art/fungi-tri" target="_blank">Source on GitHub</a></p>
+      </div>
+      <canvas></canvas>
+    </div>
     <div class="info">loading…</div>
     <script>
       const p = new URLSearchParams(location.search);
