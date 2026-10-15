@@ -77,14 +77,16 @@
           written as 270 hex characters.
         </p>
         <p>
-          These rules were picked by a MoonBit search. It scored thousands of random and evolved rules for growth that keeps
-          moving, without dying out, freezing, or boiling into noise. Every tile starts from the same seed: a disk of state 1
-          around a smaller disk of state 2, on a 96 × 96 grid that wraps at the edges.
+          These rules were picked by a MoonBit search. It scored thousands of random and evolved rules from several random
+          starts each: a sparse and a dense random soup over the whole grid, and a random patch in an empty grid that has to
+          spread. Rules that die out, freeze, or boil into noise from those starts score low. Each tile here starts from a
+          fresh random soup on a 96 × 96 grid that wraps at the edges, so every visit looks a little different.
         </p>
         <p>
           Hover a tile to see its scores, and click it to open it full screen. Press <code>Space</code> to pause,
-          <code>R</code> to restart, <code>N</code> to switch between the disk seed and a random seed, and <code>Esc</code> to
-          return here. Add <code>?skip=300</code> to the address to jump ahead. This page needs WebGPU, which recent Chrome has.
+          <code>R</code> for a new random start, <code>N</code> to cycle the start between random soup, random patch and a
+          symmetric disk, and <code>Esc</code> to return here. Add <code>?skip=300</code> to the address to jump ahead, or
+          <code>?fill=0.2</code> to change how full the soup is. This page needs WebGPU, which recent Chrome has.
         </p>
         <p><a href="https://github.com/WebGPU-Art/fungi-tri" target="_blank">Source on GitHub</a></p>
       </div>

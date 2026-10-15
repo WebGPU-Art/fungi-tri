@@ -39,8 +39,20 @@ const numParam = (key: string, fallback: number) => {
   return Number.isFinite(v) ? v : fallback;
 };
 
-/** Seed used by the search when scoring: disk of 1 around a disk of 2. */
-function seedCells(cells: Uint32Array, offset: number, w: number, h: number, radius: number, noise: boolean) {
+type SeedMode = "soup" | "patch" | "disk";
+const SEED_MODES: SeedMode[] = ["soup", "patch", "disk"];
+const SEED_NAMES: Record<SeedMode, string> = {
+  soup: "random soup",
+  patch: "random patch",
+  disk: "symmetric disk",
+};
+
+/**
+ * Starting states, matching the search in src/rule/sim.mbt:
+ * soup fills the whole grid at random (live with probability `fill`),
+ * patch is a random disk in an empty grid, disk is a disk of 1 around a disk of 2.
+ */
+function seedCells(cells: Uint32Array, offset: number, w: number, h: number, radius: number, fill: number, mode: SeedMode) {
   const cx = w / 2;
   const cy = h / 2;
   for (let y = 0; y < h; y++) {
@@ -49,7 +61,9 @@ function seedCells(cells: Uint32Array, offset: number, w: number, h: number, rad
       const dy = y + 0.5 - cy;
       const d2 = dx * dx + dy * dy;
       let s = 0;
-      if (noise) {
+      if (mode === "soup") {
+        if (Math.random() < fill) s = 1 + Math.floor(Math.random() * 2);
+      } else if (mode === "patch") {
         if (d2 < radius * radius) s = Math.floor(Math.random() * 3);
       } else if (d2 < radius * radius * 0.25) s = 2;
       else if (d2 < radius * radius) s = 1;
@@ -74,7 +88,7 @@ interface Layout {
 }
 
 function pickLayout(): Layout {
-  const radius = numParam("radius", 10);
+  const radius = numParam("radius", 16);
   const ruleParam = params.get("rule");
   const indexParam = params.get("index");
   let single: { table: Uint32Array; label: string } | null = null;
@@ -108,7 +122,7 @@ function pickLayout(): Layout {
 
   // gallery: every curated rule on a 96x96 torus, the size used for scoring
   const size = numParam("size", 96);
-  const cellPx = numParam("cell", 3);
+  const cellPx = numParam("cell", 2);
   const gap = 16;
   const tileSpan = size * cellPx + gap;
   const cols = Math.max(1, Math.floor((window.innerWidth - gap) / tileSpan));
@@ -171,13 +185,14 @@ async function main() {
     device.createBuffer({ size: cellCount * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST })
   );
 
-  let noiseSeed = params.get("seed") === "noise";
+  const fill = numParam("fill", 0.4);
+  let seedMode: SeedMode = SEED_MODES.find((m) => m === params.get("seed")) ?? "soup";
   let current = 0;
   let generation = 0;
   const reset = () => {
     const cells = new Uint32Array(cellCount);
     for (let i = 0; i < n; i++) {
-      seedCells(cells, i * layout.w * layout.h, layout.w, layout.h, layout.radius, noiseSeed);
+      seedCells(cells, i * layout.w * layout.h, layout.w, layout.h, layout.radius, fill, seedMode);
     }
     device.queue.writeBuffer(cellBufs[0], 0, cells);
     current = 0;
@@ -258,10 +273,12 @@ async function main() {
 
   const isGallery = !params.has("rule") && !params.has("index");
   const hint = isGallery
-    ? "Click a tile to open it. Space pause, R restart, N toggle noise seed."
-    : "Space pause, R restart, N toggle noise seed, Esc back to gallery.";
+    ? "Click a tile to open it. Space pause, R new random start, N change start."
+    : "Space pause, R new random start, N change start, Esc back to gallery.";
+  let lastLabel = "";
   const showInfo = (label: string) => {
-    info.textContent = `${label}\n${hint}`;
+    lastLabel = label;
+    info.textContent = `${label}\nstart: ${SEED_NAMES[seedMode]}\n${hint}`;
   };
   showInfo(isGallery ? `${n} rules` : layout.labels[0]);
 
@@ -300,8 +317,9 @@ async function main() {
     } else if (e.key === "r") {
       reset();
     } else if (e.key === "n") {
-      noiseSeed = !noiseSeed;
+      seedMode = SEED_MODES[(SEED_MODES.indexOf(seedMode) + 1) % SEED_MODES.length];
       reset();
+      showInfo(lastLabel);
     } else if (e.key === "Escape" && !isGallery) {
       location.search = "";
     }

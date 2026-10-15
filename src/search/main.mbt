@@ -6,8 +6,8 @@
 /// ```
 ///
 /// Options: `--seed N` (default 1), `--random N` random candidates (default
-/// 3000), `--gens N` evolution rounds (default 40), `--keep N` rules in the
-/// output (default 24), `--verbose` progress lines on stdout.
+/// 4000), `--gens N` evolution rounds (default 30), `--keep N` rules in the
+/// output (default 64), `--verbose` progress lines on stdout.
 struct Options {
   mut seed : Int
   mut random : Int
@@ -18,7 +18,7 @@ struct Options {
 
 ///|
 fn parse_options() -> Options {
-  let opts = { seed: 1, random: 3000, gens: 40, keep: 24, verbose: false }
+  let opts = { seed: 1, random: 4000, gens: 30, keep: 64, verbose: false }
   let args = @env.args()
   let mut i = 0
   while i < args.length() {
@@ -97,7 +97,8 @@ fn main {
   }
   sort_desc(pool)
   // phase 2: evolve a diverse elite with mutation and crossover
-  let elite_size = 32
+  // the elite has to be larger than the output to leave room for diversity
+  let elite_size = opts.keep + opts.keep / 4
   for g in 0..<opts.gens {
     let elite = diverse_top(pool, elite_size, 40)
     let children : Array[@rule.Rule] = []
@@ -130,6 +131,7 @@ fn main {
       "balance": m.balance.to_json(),
       "structure": m.structure.to_json(),
       "cohesion": m.cohesion.to_json(),
+      "clumping": m.clumping.to_json(),
       "period": m.period.to_json(),
     }
   })

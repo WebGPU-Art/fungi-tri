@@ -58,6 +58,15 @@ pub fn Grid::seed_noise(self : Grid, radius : Double, rng : Rng) -> Unit {
 }
 
 ///|
+/// Random soup over the whole grid: each cell is live with probability
+/// `fill`, and a live cell is state 1 or 2 with equal odds.
+pub fn Grid::seed_soup(self : Grid, fill : Double, rng : Rng) -> Unit {
+  for i in 0..<(self.w * self.h) {
+    self.cells[i] = if rng.double() < fill { 1 + rng.int(2) } else { 0 }
+  }
+}
+
+///|
 /// Weight of a neighbor state inside the `a + 5 * b` count key.
 let count_weight : FixedArray[Int] = [0, 1, 5]
 

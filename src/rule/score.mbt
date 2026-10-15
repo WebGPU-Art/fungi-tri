@@ -15,6 +15,9 @@ pub struct Metrics {
   /// mean number of live neighbors (of 8) around live cells: low for dust
   /// and gliders, high for solid growth
   cohesion : Double
+  /// variance of live counts over 8x8 blocks relative to a random grid of
+  /// the same density: ~1 for gas, large for clumps, domains and fronts
+  clumping : Double
   /// smallest period found at the end (1 = still), 0 when none was found
   period : Int
   score : Double
@@ -31,9 +34,9 @@ pub(all) struct ScoreConfig {
 ///|
 pub let default_config : ScoreConfig = {
   size: 96,
-  steps: 320,
-  window: 120,
-  radius: 10.0,
+  steps: 300,
+  window: 100,
+  radius: 16.0,
 }
 
 ///|
@@ -118,6 +121,38 @@ fn structure_of(g : Grid, mask : FixedArray[Bool]) -> Double {
 }
 
 ///|
+fn clumping_of(g : Grid) -> Double {
+  let b = 8
+  let bw = g.w / b
+  let bh = g.h / b
+  let counts = FixedArray::make(bw * bh, 0.0)
+  for y in 0..<(bh * b) {
+    for x in 0..<(bw * b) {
+      if g.cells[y * g.w + x] != 0 {
+        counts[y / b * bw + x / b] += 1.0
+      }
+    }
+  }
+  let k = (bw * bh).to_double()
+  let mut mean = 0.0
+  for c in counts {
+    mean += c
+  }
+  mean = mean / k
+  let cells = (b * b).to_double()
+  let p = mean / cells
+  let expected = cells * p * (1.0 - p)
+  if expected < 1.0e-6 {
+    return 0.0
+  }
+  let mut v = 0.0
+  for c in counts {
+    v += (c - mean) * (c - mean)
+  }
+  v / k / expected
+}
+
+///|
 fn cohesion_of(g : Grid) -> Double {
   let mut live = 0
   let mut neighbors = 0
@@ -146,7 +181,15 @@ fn cohesion_of(g : Grid) -> Double {
 
 ///|
 /// Runs `rule` from the given starting grid and measures the result.
-pub fn run_metrics(rule : Rule, start : Grid, cfg : ScoreConfig) -> Metrics {
+///
+/// `spread_target` is the coverage needed for full credit; pass 0 for starts
+/// that already fill the grid.
+pub fn run_metrics(
+  rule : Rule,
+  start : Grid,
+  cfg : ScoreConfig,
+  spread_target? : Double = 0.0,
+) -> Metrics {
   let n = start.w * start.h
   let nd = n.to_double()
   let mut a = start
@@ -210,6 +253,7 @@ pub fn run_metrics(rule : Rule, start : Grid, cfg : ScoreConfig) -> Metrics {
   let structure = structure_of(a, recent)
   let coverage = covered.to_double() / nd
   let cohesion = cohesion_of(a)
+  let clumping = clumping_of(a)
   let score = if live_count == 0 {
     0.0
   } else {
@@ -221,26 +265,52 @@ pub fn run_metrics(rule : Rule, start : Grid, cfg : ScoreConfig) -> Metrics {
     let activity = bell(@math.ln(churn + 1.0e-6), @math.ln(0.04), 1.3)
     let density = bell(live, 0.32, 0.2)
     let solid = clamp01((cohesion - 1.0) / 2.0)
+    let clumps = 0.2 + 0.8 * clamp01((clumping - 1.0) / 4.0)
     let shape = clamp01(structure / 0.2)
     let mix = clamp01(balance / 0.2)
-    let spread = clamp01(coverage / 0.35)
-    period_factor * activity * density * shape * mix * spread * solid
+    let spread = if spread_target > 0.0 {
+      clamp01(coverage / spread_target)
+    } else {
+      1.0
+    }
+    period_factor * activity * density * shape * mix * spread * solid * clumps
   }
-  { live, churn, balance, structure, coverage, cohesion, period, score }
+  {
+    live,
+    churn,
+    balance,
+    structure,
+    coverage,
+    cohesion,
+    clumping,
+    period,
+    score,
+  }
 }
 
 ///|
-/// Combined score from the disk seed (what the renderer shows) and a noisy
-/// disk (to reject rules that only work thanks to symmetry).
+/// Scores a rule over several random starts, so the curated rules do not
+/// depend on one particular seed:
+///
+/// - a sparse random soup over the whole grid,
+/// - a dense random soup,
+/// - a random patch in the middle of an empty grid, which has to spread.
+///
+/// The score is the mean of the three, halved when the rule dies in any of
+/// them. Returns the metrics of the dense soup, the default start in the
+/// renderer.
 pub fn evaluate(rule : Rule, cfg : ScoreConfig, rng : Rng) -> (Double, Metrics) {
   let g = Grid::new(cfg.size, cfg.size)
-  g.seed_disk(cfg.radius)
-  let disk = run_metrics(rule, g, cfg)
-  if disk.score < 0.01 {
-    return (0.0, disk)
+  g.seed_soup(0.4, rng)
+  let dense = run_metrics(rule, g, cfg)
+  if dense.score < 0.01 {
+    return (0.0, dense)
   }
-  let g2 = Grid::new(cfg.size, cfg.size)
-  g2.seed_noise(cfg.radius, rng)
-  let noise = run_metrics(rule, g2, cfg)
-  (0.7 * disk.score + 0.3 * noise.score, disk)
+  g.seed_soup(0.15, rng)
+  let sparse = run_metrics(rule, g, cfg)
+  g.seed_noise(cfg.radius, rng)
+  let patch = run_metrics(rule, g, cfg, spread_target=0.3)
+  let mean = (dense.score + sparse.score + patch.score) / 3.0
+  let died = sparse.live == 0.0 || patch.live == 0.0
+  (if died { mean * 0.5 } else { mean }, dense)
 }
