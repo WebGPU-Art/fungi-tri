@@ -7,6 +7,7 @@ const ENCODED_HEX = 270;
 
 interface RuleInfo {
   hex: string;
+  kind?: string;
   score: number;
   live: number;
   churn: number;
@@ -99,7 +100,7 @@ function pickLayout(): Layout {
   } else if (indexParam !== null) {
     const i = Number.parseInt(indexParam);
     const info = rules[i];
-    if (info) single = { table: decodeRule(info.hex)!, label: `#${i}` };
+    if (info) single = { table: decodeRule(info.hex)!, label: `#${i}  ${info.kind ?? ""}` };
   }
 
   if (single) {
@@ -123,7 +124,8 @@ function pickLayout(): Layout {
   // gallery: every curated rule on a 96x96 torus, the size used for scoring
   const size = numParam("size", 96);
   const cellPx = numParam("cell", 2);
-  const gap = 16;
+  // the gap under each tile holds its caption
+  const gap = 26;
   const tileSpan = size * cellPx + gap;
   const cols = Math.max(1, Math.floor((window.innerWidth - gap) / tileSpan));
   const rows = Math.ceil(rules.length / cols);
@@ -131,7 +133,7 @@ function pickLayout(): Layout {
     tables: rules.map((r) => decodeRule(r.hex)!),
     labels: rules.map(
       (r, i) =>
-        `#${i}  score ${r.score.toFixed(3)}  live ${r.live.toFixed(2)}  churn ${r.churn.toFixed(3)}  structure ${r.structure.toFixed(2)}`
+        `#${i}  ${r.kind ?? ""}  live ${r.live.toFixed(2)}  churn ${r.churn.toFixed(3)}  structure ${r.structure.toFixed(2)}`
     ),
     w: size,
     h: size,
@@ -165,6 +167,23 @@ async function main() {
   canvas.height = layout.canvasH;
   canvas.style.width = `${layout.canvasW}px`;
   canvas.style.height = `${layout.canvasH}px`;
+  const isGallery = !params.has("rule") && !params.has("index");
+  if (isGallery) {
+    // captions sit in the gap under each tile, over the canvas
+    const board = canvas.parentElement as HTMLElement;
+    board.style.width = `${layout.canvasW}px`;
+    const spanX = layout.w * layout.cellPx + layout.gap;
+    const spanY = layout.h * layout.cellPx + layout.gap;
+    rules.forEach((r, i) => {
+      const caption = document.createElement("div");
+      caption.className = "caption";
+      caption.textContent = `#${i}  ${r.kind ?? ""}`;
+      caption.style.left = `${(i % layout.cols) * spanX}px`;
+      caption.style.top = `${Math.floor(i / layout.cols) * spanY + layout.h * layout.cellPx}px`;
+      caption.style.width = `${layout.w * layout.cellPx}px`;
+      board.appendChild(caption);
+    });
+  }
   const context = canvas.getContext("webgpu") as GPUCanvasContext;
   const format = navigator.gpu.getPreferredCanvasFormat();
   context.configure({ device, format, alphaMode: "opaque" });
@@ -271,7 +290,6 @@ async function main() {
   };
   requestAnimationFrame(frameLoop);
 
-  const isGallery = !params.has("rule") && !params.has("index");
   const hint = isGallery
     ? "Click a tile to open it. Space pause, R new random start, N change start."
     : "Space pause, R new random start, N change start, Esc back to gallery.";

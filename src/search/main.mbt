@@ -8,17 +8,31 @@
 /// Options: `--seed N` (default 1), `--random N` random candidates (default
 /// 4000), `--gens N` evolution rounds (default 30), `--keep N` rules in the
 /// output (default 64), `--verbose` progress lines on stdout.
+///
+/// `--niches` switches to the niche search (see `niche_search`): `--random N`
+/// starting rules, then `--evals N` (default 8000) mutations, keeping the best
+/// rule per behavior niche instead of the best rules overall.
 struct Options {
   mut seed : Int
   mut random : Int
   mut gens : Int
   mut keep : Int
   mut verbose : Bool
+  mut niches : Bool
+  mut evals : Int
 }
 
 ///|
 fn parse_options() -> Options {
-  let opts = { seed: 1, random: 4000, gens: 30, keep: 64, verbose: false }
+  let opts = {
+    seed: 1,
+    random: 4000,
+    gens: 30,
+    keep: 64,
+    verbose: false,
+    niches: false,
+    evals: 8000,
+  }
   let args = @env.args()
   let mut i = 0
   while i < args.length() {
@@ -37,6 +51,8 @@ fn parse_options() -> Options {
       "--gens" => opts.gens = next_int(opts.gens)
       "--keep" => opts.keep = next_int(opts.keep)
       "--verbose" => opts.verbose = true
+      "--niches" => opts.niches = true
+      "--evals" => opts.evals = next_int(opts.evals)
       _ => ()
     }
     i += 1
@@ -77,9 +93,7 @@ fn diverse_top(
 }
 
 ///|
-fn main {
-  let opts = parse_options()
-  let rng = @rule.Rng::new(opts.seed.to_uint64() * 0x2545F4914F6CDD1DUL + 1UL)
+fn top_search(opts : Options, rng : @rule.Rng) -> Array[Candidate] {
   let cfg = @rule.default_config
   let pool : Array[Candidate] = []
   let consider = fn(r : @rule.Rule) {
@@ -120,11 +134,23 @@ fn main {
       println("gen \{g} best \{pool[0].score}")
     }
   }
-  let chosen = diverse_top(pool, opts.keep, 60)
+  diverse_top(pool, opts.keep, 60)
+}
+
+///|
+fn main {
+  let opts = parse_options()
+  let rng = @rule.Rng::new(opts.seed.to_uint64() * 0x2545F4914F6CDD1DUL + 1UL)
+  let chosen = if opts.niches {
+    diverse_top(niche_search(opts, rng), opts.keep, 60)
+  } else {
+    top_search(opts, rng)
+  }
   let rules : Array[Json] = chosen.map(fn(c) {
     let m = c.metrics
     {
       "hex": c.rule.to_hex().to_json(),
+      "kind": niche_label(m).to_json(),
       "score": c.score.to_json(),
       "live": m.live.to_json(),
       "churn": m.churn.to_json(),

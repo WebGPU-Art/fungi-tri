@@ -21,6 +21,9 @@ pub struct Metrics {
   /// smallest period found at the end (1 = still), 0 when none was found
   period : Int
   score : Double
+  /// like `score` but without preferring a particular activity or density,
+  /// used by the niche search where those are the niche coordinates
+  quality : Double
 } derive(Debug, ToJson)
 
 ///|
@@ -254,6 +257,29 @@ pub fn run_metrics(
   let coverage = covered.to_double() / nd
   let cohesion = cohesion_of(a)
   let clumping = clumping_of(a)
+  let quality = if live_count == 0 ||
+    churn < 0.003 ||
+    churn > 0.7 ||
+    live > 0.85 {
+    0.0
+  } else {
+    let period_factor = match period {
+      0 => 1.0
+      1 | 2 => 0.05
+      _ => 0.35
+    }
+    let spread = if spread_target > 0.0 {
+      clamp01(coverage / spread_target)
+    } else {
+      1.0
+    }
+    period_factor *
+    clamp01(structure / 0.2) *
+    clamp01(balance / 0.15) *
+    spread *
+    (0.3 + 0.7 * clamp01((cohesion - 1.0) / 2.0)) *
+    (0.4 + 0.6 * clamp01((clumping - 1.0) / 4.0))
+  }
   let score = if live_count == 0 {
     0.0
   } else {
@@ -285,6 +311,7 @@ pub fn run_metrics(
     clumping,
     period,
     score,
+    quality,
   }
 }
 
@@ -311,6 +338,28 @@ pub fn evaluate(rule : Rule, cfg : ScoreConfig, rng : Rng) -> (Double, Metrics) 
   g.seed_noise(cfg.radius, rng)
   let patch = run_metrics(rule, g, cfg, spread_target=0.3)
   let mean = (dense.score + sparse.score + patch.score) / 3.0
+  let died = sparse.live == 0.0 || patch.live == 0.0
+  (if died { mean * 0.5 } else { mean }, dense)
+}
+
+///|
+/// Same starts as `evaluate`, averaging `quality` instead of `score`.
+pub fn evaluate_quality(
+  rule : Rule,
+  cfg : ScoreConfig,
+  rng : Rng,
+) -> (Double, Metrics) {
+  let g = Grid::new(cfg.size, cfg.size)
+  g.seed_soup(0.4, rng)
+  let dense = run_metrics(rule, g, cfg)
+  if dense.quality < 0.01 {
+    return (0.0, dense)
+  }
+  g.seed_soup(0.15, rng)
+  let sparse = run_metrics(rule, g, cfg)
+  g.seed_noise(cfg.radius, rng)
+  let patch = run_metrics(rule, g, cfg, spread_target=0.3)
+  let mean = (dense.quality + sparse.quality + patch.quality) / 3.0
   let died = sparse.live == 0.0 || patch.live == 0.0
   (if died { mean * 0.5 } else { mean }, dense)
 }

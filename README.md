@@ -27,9 +27,21 @@ That gives 3 × 15 × 15 = 675 entries, each a trit. Entry 0 (empty cell, empty 
 
 The final set keeps rules at least 60 table entries apart.
 
+That search converges on one kind of behavior, so there is a second mode, `--niches`, in the spirit of MAP-Elites: rules are binned by how they behave from a dense soup (how fast cells change, how full the grid is, how clumped the live cells are) and the best rule of every bin is kept. It starts from rules of several families (`src/rule/families.mbt`), each with some random noise mixed in:
+
+- random and outer-totalistic tables,
+- excitable media (waves and spirals),
+- cyclic rock-paper-scissors rules,
+- two Life-like species sharing a grid,
+- predator and prey,
+- voting rules.
+
+`scripts/merge-rules.mjs` merges several search outputs into one gallery, capping the number of rules per kind and ordering them by kind.
+
 ```bash
 yarn search --seed 7 > web/rules.json            # default: 4000 random + 30 generations, keeps 64
-yarn search --seed 7 --random 500 --gens 10 --keep 12 --verbose
+yarn search --niches --seed 11 --keep 60 > niches-11.json
+node scripts/merge-rules.mjs --per-kind 4 web/rules.json niches-11.json > merged.json
 ```
 
 ### Renderer

@@ -38,3 +38,24 @@ test "empty rule kills the seed" {
   inspect(m.live, content="0")
   inspect(m.score, content="0")
 }
+
+///|
+test "families build valid tables" {
+  let rng = Rng::new(7)
+  for k in 0..<FAMILIES {
+    let r = Rule::family(rng, k)
+    inspect(r.get(0), content="0")
+    let back = Rule::from_hex(r.to_hex()).unwrap()
+    inspect(back.distance(r), content="0")
+  }
+}
+
+///|
+test "cyclic rule keeps moving from a soup" {
+  let rng = Rng::new(3)
+  let r = Rule::cyclic(rng, 0.0)
+  let g = Grid::new(48, 48)
+  g.seed_soup(0.6, rng)
+  let m = run_metrics(r, g, { size: 48, steps: 60, window: 20, radius: 8.0 })
+  inspect(m.live > 0.0, content="true")
+}

@@ -46,6 +46,20 @@
       .intro a {
         color: #7cc8f0;
       }
+      .board {
+        position: relative;
+        margin: 0 auto;
+      }
+      .caption {
+        position: absolute;
+        height: 26px;
+        line-height: 26px;
+        font-size: 11px;
+        color: #8a8a94;
+        white-space: nowrap;
+        overflow: hidden;
+        pointer-events: none;
+      }
       .swatch {
         display: inline-block;
         width: 10px;
@@ -77,10 +91,16 @@
           written as 270 hex characters.
         </p>
         <p>
-          These rules were picked by a MoonBit search. It scored thousands of random and evolved rules from several random
-          starts each: a sparse and a dense random soup over the whole grid, and a random patch in an empty grid that has to
-          spread. Rules that die out, freeze, or boil into noise from those starts score low. Each tile here starts from a
-          fresh random soup on a 96 × 96 grid that wraps at the edges, so every visit looks a little different.
+          These rules were picked by a MoonBit search. Rules are scored from several random starts: a sparse and a dense
+          random soup over the whole grid, and a random patch in an empty grid that has to spread. Rules that die out,
+          freeze, or boil into noise from those starts score low. To get more than one kind of behavior, a second search
+          bins rules by how they behave (how fast cells change, how full the grid is, how clumped the live cells are) and
+          keeps the best of every bin, starting from families like excitable waves, cyclic rock-paper-scissors, two
+          Life-like species, predator and prey, and voting rules. The caption under each tile names its bin.
+        </p>
+        <p>
+          Each tile here starts from a fresh random soup on a 96 × 96 grid that wraps at the edges, so every visit looks a
+          little different.
         </p>
         <p>
           Hover a tile to see its scores, and click it to open it full screen. Press <code>Space</code> to pause,
@@ -90,7 +110,7 @@
         </p>
         <p><a href="https://github.com/WebGPU-Art/fungi-tri" target="_blank">Source on GitHub</a></p>
       </div>
-      <canvas></canvas>
+      <div class="board"><canvas></canvas></div>
     </div>
     <div class="info">loading…</div>
     <script>
